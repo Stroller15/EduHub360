@@ -4,7 +4,9 @@ mongoose.set('strictQuery', false);
 
 const connectToDb = async() => {
     try {
-        const {connection} = await mongoose.connect(process.env.MONGO_URL);
+        const {connection} = await mongoose.connect((process.env.MONGO_URL), {
+            dbName: "eduhub360"
+        });
 
         if(connection) {
         console.log(`\n 🟢Mongodb connected !! DB Host: ${connection.host}`);
