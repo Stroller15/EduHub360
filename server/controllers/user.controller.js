@@ -98,8 +98,18 @@ const logout = (req, res) => {
     })
 }
 
-const getProfile = (req, res) => {
-
+const getProfile = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const user = await User.findById(userId);
+        res.status(200).json({
+            success: true,
+            message: "User fetched successfully",
+            user
+        })
+    } catch (error) {
+        return next(new ApiError(error.message, 500));
+    }
 }
 
 export {
