@@ -38,7 +38,7 @@ const register = async (req, res, next) => {
 
     await user.save();
 
-    password = undefined;
+    user.password = undefined;
 
     const token = await user.generateJwtToken();
 
@@ -51,8 +51,38 @@ const register = async (req, res, next) => {
     });
 }
 
-const login = (req, res) => {
+const login = async (req, res, next) => {
+    try {
+        const {email, password} = req.body;
 
+        if(!email || !password) {
+            return next(new ApiError(400, "Please provide email and password"));
+        }   
+
+        const user = await User.findOne({email}).select("+password");
+
+
+        if (!(user && (await user.comparePassword(password)))) {
+            return next(
+            new ApiError(401,'Email or Password do not match or user does not exist')
+            );
+        }
+
+        const token = await user.generateJwtToken();
+        user.password = undefined;
+
+        res.cookie('token', token, cookieOptions);
+
+        res.status(200).json({
+            success: true,
+            message: "User logged in successfully",
+            user
+        });
+
+    } catch (error) {
+        return next(new ApiError(error.message, 500));
+    }
+    
 }
 
 const logout = (req, res) => {
