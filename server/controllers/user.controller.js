@@ -2,6 +2,7 @@ import User from '../models/user.model.js';
 import ApiError from '../utils/error.util.js';
 import cloudinary from 'cloudinary';
 import fs from 'fs'
+import sendEmail from '../utils/sendEmail.util.js';
 
 const cookieOptions = {
     expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
@@ -142,9 +143,55 @@ const getProfile = async (req, res, next) => {
     }
 }
 
+const forgotPassword = async (req, res, next) => {
+    const {email} = req.body;
+    if(!email) {
+        return next(new ApiError(400, "Please provide email"));
+    }
+
+    const user = await User.findOne({email});
+
+    if(!user) {
+        return next(new ApiError(400, "User not found"));
+    }
+
+    const resetPasswordToken = await user.getResetPasswordToken();
+
+    await user.save();
+
+    const resetPasswordURL = `${process.env.FRONTEND_URL}/reset-password/${resetPasswordToken}`;
+
+    const subject = "Reset Password";
+    const message = `You can reset your password by clicking <a href=${resetPasswordURL} target="_blank">Reset your password</a>\nIf the above link does not work for some reason then copy paste this link in new tab ${resetPasswordURL}.\n If you have not requested this, kindly ignore.`;
+
+    try {
+         await sendEmail(email, subject, message);
+
+         res.status(200).json({
+             success: true,
+             message: `Reset password token sent to your ${email} sussessfully`
+         })
+    }catch (error) {
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+        await user.save();
+        return next(new ApiError(error.message, 500));
+    }
+
+}       
+
+const resetPassword = async (req, res, next) => {   
+    const {password} = req.body;
+    if(!password) {
+        return next(new ApiError(400, "Please provide password"));
+    }       
+}
+
 export {
     register,
     login,
     logout,
-    getProfile
+    getProfile,
+    forgotPassword,
+    resetPassword
 }
