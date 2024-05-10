@@ -7,13 +7,14 @@ import crypto from 'crypto';
 
 
 const cookieOptions = {
-    expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+    maxAge: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), //3days
     httpOnly: true, 
     secure: true
 }
 
 
 const register = async (req, res, next) => {
+    console.log("res", res);
     const {fullName, email, password} = req.body;
 
     if(!fullName || !email || !password) {
@@ -41,7 +42,7 @@ const register = async (req, res, next) => {
 
     //! taking image from cloudinary
     if (req.file) {
-        console.log(req.file)
+        // console.log(req.file)
         try {
           const result = await cloudinary.v2.uploader.upload(req.file.path, {
             folder: 'lms', // Save files in a folder named lms
@@ -214,8 +215,89 @@ const resetPassword = async (req, res, next) => {
     })
 }
 
-const changePassword = (req, res, next) => {
-    
+const changePassword = async (req, res, next) => {
+    const {oldPassword, newPassword} = req.body;
+    const {id} = req.user;
+
+    if(!oldPassword || !newPassword) {
+        return next(new ApiError(400, "Please provide old and new password"));
+    }
+
+    const user = await User.findById(id).select("+password");
+
+    if(!user) {
+        return next(new ApiError('User does not exist', 400))
+    }
+
+    const isValidPassword = await user.comparePassword(oldPassword);
+
+    if(!isValidPassword) {
+        return next(new ApiError('Password is invalid', 400));
+    }
+
+    user.password = newPassword;
+
+    await user.save();
+
+    user.password = undefined;
+
+    res.status(200).json({
+        success: true,
+        message: "Password changed successfully"
+        })
+}
+
+const updateUser = async (req, res, next) => {
+    const { fullName } = req.body;
+    const { id } = req.params;
+  
+    const user = await User.findById(id);
+  
+    if (!user) {
+      return next(new ApiError('Invalid user id or user does not exist'));
+    }
+  
+    if (fullName) {
+      user.fullName = fullName;
+    }
+  
+    // Run only if user sends a file
+    if (req.file) {
+      // Deletes the old image uploaded by the user
+      await cloudinary.v2.uploader.destroy(user.avatar.public_id);
+  
+      try {
+        const result = await cloudinary.v2.uploader.upload(req.file.path, {
+          folder: 'lms', // Save files in a folder named lms
+          width: 250,
+          height: 250,
+          gravity: 'faces', // This option tells cloudinary to center the image around detected faces (if any) after cropping or resizing the original image
+          crop: 'fill',
+        });
+  
+        // If success
+        if (result) {
+          // Set the public_id and secure_url in DB
+          user.avatar.public_id = result.public_id;
+          user.avatar.secure_url = result.secure_url;
+  
+          // After successful upload remove the file from local storage
+          fs.rm(`uploads/${req.file.filename}`);
+        }
+      } catch (error) {
+        return next(
+          new ApiError(error || 'File not uploaded, please try again', 400)
+        );
+      }
+    }
+  
+    // Save the user object
+    await user.save();
+  
+    res.status(200).json({
+      success: true,
+      message: 'User details updated successfully',
+    });
 }
 
 export {
@@ -225,5 +307,6 @@ export {
     getProfile,
     forgotPassword,
     resetPassword,
-    changePassword
+    changePassword,
+    updateUser
 }
