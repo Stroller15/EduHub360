@@ -1,4 +1,4 @@
-import express from "express";
+import express, { urlencoded } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { config } from "dotenv";
@@ -19,6 +19,7 @@ app.use(
   })
 );
 app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
 app.use("/ping", (req, res) => {

@@ -3,6 +3,8 @@ import ApiError from '../utils/error.util.js';
 import cloudinary from 'cloudinary';
 import fs from 'fs'
 import sendEmail from '../utils/sendEmail.util.js';
+import crypto from 'crypto';
+
 
 const cookieOptions = {
     expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
@@ -155,11 +157,11 @@ const forgotPassword = async (req, res, next) => {
         return next(new ApiError(400, "User not found"));
     }
 
-    const resetPasswordToken = await user.getResetPasswordToken();
+    const resetToken = await user.getResetPasswordToken();
 
     await user.save();
 
-    const resetPasswordURL = `${process.env.FRONTEND_URL}/reset-password/${resetPasswordToken}`;
+    const resetPasswordURL = `${process.env.FRONTEND_URL}/reset/${resetToken}`;
 
     const subject = "Reset Password";
     const message = `You can reset your password by clicking <a href=${resetPasswordURL} target="_blank">Reset your password</a>\nIf the above link does not work for some reason then copy paste this link in new tab ${resetPasswordURL}.\n If you have not requested this, kindly ignore.`;
@@ -172,8 +174,8 @@ const forgotPassword = async (req, res, next) => {
              message: `Reset password token sent to your ${email} sussessfully`
          })
     }catch (error) {
-        user.resetPasswordToken = undefined;
-        user.resetPasswordExpire = undefined;
+        user.resetToken = undefined;
+        user.resetToken = undefined;
         await user.save();
         return next(new ApiError(error.message, 500));
     }
@@ -181,10 +183,35 @@ const forgotPassword = async (req, res, next) => {
 }       
 
 const resetPassword = async (req, res, next) => {   
+    const {resetToken} = req.params;
+
     const {password} = req.body;
-    if(!password) {
-        return next(new ApiError(400, "Please provide password"));
-    }       
+
+    const forgotPasswordToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+
+
+    const user = await User.findOne({
+        forgotPasswordToken,
+        forgotPasswordExpiry: {$gt: Date.now()}
+    }); 
+
+    
+    if(!user) {
+        return next(new ApiError(400, "Token is invalid or has expired"));
+    }
+
+    user.password = password;
+    user.forgotPasswordToken = undefined;
+    user.forgotPasswordExpiry = undefined;
+    await user.save();  
+
+    res.status(200).json({
+        success: true,
+        message: "Password reset successfully"
+    })
 }
 
 export {
