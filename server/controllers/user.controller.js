@@ -214,11 +214,16 @@ const resetPassword = async (req, res, next) => {
     })
 }
 
+const changePassword = (req, res, next) => {
+    
+}
+
 export {
     register,
     login,
     logout,
     getProfile,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    changePassword
 }
