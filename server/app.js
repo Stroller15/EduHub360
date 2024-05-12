@@ -29,7 +29,11 @@ app.use("/ping", (req, res) => {
 
 //! custom middleware
 
+// user routing
 app.use('/api/v1/user', userRoutes);
+
+//course routing
+app.use('/api/v1/course', courseRoutes);
 
 app.all("*", (req, res) => {
   res.status(404).send("OOPs!! page not found");
