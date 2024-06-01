@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import { config } from "dotenv";
 import morgan from "morgan";
 import userRoutes from "./routes/user.routes.js"
+import courseRoutes from "./routes/course.routes.js"
 import errorMiddleware from "./middlewares/error.middleware.js";
 
 const app = express();
