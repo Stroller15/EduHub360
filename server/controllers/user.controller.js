@@ -14,7 +14,7 @@ const cookieOptions = {
 
 
 const register = async (req, res, next) => {
-    console.log("res", res);
+
     const {fullName, email, password} = req.body;
 
     if(!fullName || !email || !password) {
